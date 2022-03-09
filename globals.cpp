@@ -52,9 +52,9 @@ void InitMapLzwComp() {
 	}
 }
 
-string Int2Bin(curtype num) {
-	return bitset<LZW_DEPTH>(num).to_string();
-}
+//string Int2Bin(curtype num) {
+//	return bitset<LZW_DEPTH>(num).to_string();
+//}
 
 //const char* Int2C_String(int num) {
 //	return std::to_string(num).c_str();
