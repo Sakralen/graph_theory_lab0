@@ -53,6 +53,7 @@ void InitMapLzwComp();			//Инициализирует словарь для сжатия для LZW
 void InitMapLzwDecomp();
 string Int2Bin(curtype num);	//Формирует строковое представление
 							//двоичного вида десятичного числа заданной разрядности LZW_DEPTH
+string Int2Bin_dynamic(curtype num); //модификация с динамической длиной слова
 int CountBits(int num);
 void CompressLzw();			//Производит сжатие по алгоритму LZW
 void DecompressLzw();		//Производит распаковку по алгоритму LZW

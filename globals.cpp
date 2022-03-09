@@ -78,13 +78,15 @@ void CompressLzw() {
 				sequence += buf;								//удлиняем ее следующим символом
 			}
 			else {												//Если нет:
-				ofs << Int2Bin(mapLzwComp[sequence]);				//Выводим код предыдущей последовательности
+				//ofs << Int2Bin(mapLzwComp[sequence]);			//Выводим код предыдущей последовательности
+				ofs << bitset<LZW_DEPTH>(mapLzwComp[sequence]).to_string();
 				mapLzwComp[sequence + buf] = mapLzwComp.size();		//Добавляем новую последовательнось в словарь,
 																//формируя для нее код в dec;
 				sequence = buf;									//начинаем снова с последнего символа
 			}
 		}
-		ofs << Int2Bin(mapLzwComp[sequence]);
+		//ofs << Int2Bin(mapLzwComp[sequence]);
+		ofs << bitset<LZW_DEPTH>(mapLzwComp[sequence]).to_string();
 		ifs.close();
 		ofs.close();
 	}
