@@ -59,10 +59,10 @@ string Int2Bin(curtype num) {
 //const char* Int2C_String(int num) {
 //	return std::to_string(num).c_str();
 //}
-// 
-//short CountBits(int num) {
-//	return static_cast<int>(log(num) / log(2) + 1);
-//}
+
+int CountBits(int num) {
+	return static_cast<int>(log(num) / log(2) + 1);
+}
 
 void CompressLzw() {
 	mapLzwComp.clear();

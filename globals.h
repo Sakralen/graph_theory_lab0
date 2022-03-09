@@ -53,8 +53,7 @@ void InitMapLzwComp();			//Инициализирует словарь для сжатия для LZW
 void InitMapLzwDecomp();
 string Int2Bin(curtype num);	//Формирует строковое представление
 							//двоичного вида десятичного числа заданной разрядности LZW_DEPTH
-//const char* Int2C_String(int num);
-//short CountBits(int num);
+int CountBits(int num);
 void CompressLzw();			//Производит сжатие по алгоритму LZW
 void DecompressLzw();		//Производит распаковку по алгоритму LZW
 int GetFileSize_cpp17(const char* name);		//Вычисляет длину файла !!! Только C++17 и выше (?) !!!
