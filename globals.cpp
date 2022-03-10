@@ -4,6 +4,7 @@
 #include <fstream>
 //#include <ctime>
 #include <random>
+#include "MyBitset.h"
 
 void FillFile() {
 	//srand(time(0));
@@ -15,7 +16,7 @@ void FillFile() {
 	if (ofs.is_open()) {
 		for (int i = 0; i < SOURCE_FILE_SIZE; i++) {
 			//ofs << kSymbArr[(rand() % ARR_SYMB_CNT)];
-			std::uniform_int_distribution<int> distribution(0, SYMB_CNT - 1);
+			std::uniform_int_distribution<int> distribution(0, kSymbStr.size() - 1);
 			ofs << kSymbStr[distribution(engine)];
 		}
 		ofs.close();
@@ -46,7 +47,7 @@ void CalcPrice() {
 }
 
 void InitMapLzwComp() {
-	for (curtype i = 0; i < SYMB_CNT; i++) {
+	for (curtype i = 0; i < kSymbStr.size(); i++) {
 		mapLzwComp[string(1, kSymbStr[i])] = i; //“акой конструктор string дл€ формировани€ 
 											//единичной строки char'ов
 	}
@@ -96,7 +97,7 @@ void CompressLzw() {
 }
 
 void InitMapLzwDecomp() {
-	for (curtype i = 0; i < SYMB_CNT; i++) {
+	for (curtype i = 0; i < kSymbStr.size(); i++) {
 		mapLzwDecomp[i] = string(1, kSymbStr[i]); 
 	}
 	stop
@@ -134,7 +135,8 @@ void DecompressLzw() {
 																		//новую последовательность
 				}
 				else {	//≈сли кода нет:
-					tmpSequence = mapLzwDecomp[prevCode] + mapLzwDecomp[prevCode][0];
+					tmpSequence = mapLzwDecomp[prevCode] + mapLzwDecomp[prevCode][0]; //ƒобавили новый код
+																			//= старый + новый[0]
 					ofs << tmpSequence; 
 					mapLzwDecomp[code] = tmpSequence;
 					//mapLzwDecomp[mapLzwDecomp.size()] = tmpSequence;	//???
@@ -152,8 +154,8 @@ void DecompressLzw() {
 	}
 }
 
-int GetFileSize_cpp17(const char* name) {
-	return std::filesystem::file_size(ENCODED_LZW_FILE_NAME);
+int GetFileSize_cpp17(string name) {
+	return std::filesystem::file_size(name);
 }
 
 //int GetFileSize_lazy(const char* name) {
@@ -176,4 +178,84 @@ float CalcCompressionRatio(const char* name) {
 	float ratio = static_cast<float>(SOURCE_FILE_SIZE) / (GetFileSize_cpp17(name) / 8);
 	//printf("%.2f\n", ratio);
 	return ratio;
+}
+
+bool IsFilesEqual(const string f1Name, const string f2Name) {
+	std::ifstream f1(f1Name);
+	std::ifstream f2(f2Name);
+
+	if (f1.is_open() && f2.is_open()) {
+		if (GetFileSize_cpp17(f1Name) == GetFileSize_cpp17(f2Name)) {
+			std::istreambuf_iterator<char> begin1(f1);
+			std::istreambuf_iterator<char> begin2(f2);
+			std::istreambuf_iterator<char> end;
+			bool res = std::equal(begin1, end, begin2);
+			f1.close();
+			f2.close();
+			return res;
+		}
+		else {
+			f1.close();
+			f2.close();
+			return false;
+		}
+	}
+	else {
+		throw std::exception();
+	}
+}
+
+void ComressRLE() {
+	ifstream ifs(SOURCE_FILE_NAME);
+	ofstream ofs(ENCODED_RLE_FILE_NAME);
+	if (ifs.is_open() && ofs.is_open()) {
+		char buf;
+		char prev;
+		short sameCnt = 1;
+		short diffCnt = 1;
+		//int max = -1;
+
+		ifs >> std::noskipws >> prev;
+		while (ifs >> std::noskipws >> buf) {
+			//–ассмотреть граничный случай с EOF
+			if (buf == prev) {
+				if (sameCnt != 1 << (RLE_DEPTH - 1)) {
+					sameCnt++;
+					/*if (count > max) {
+						max = count;
+					}*/
+				}
+				else {
+					if (sameCnt) {
+						ofs << sameCnt << prev;
+					}
+					else {
+						ofs << prev;
+					}
+					sameCnt = 1;
+				}
+			}
+			else {
+				if (sameCnt) {
+					ofs << sameCnt << prev;
+				}
+				else {
+					ofs << prev;
+				}
+				sameCnt = 1;
+			}
+			prev = buf;
+		}
+		if (sameCnt) {
+			ofs << ++sameCnt << prev;
+		}
+		else {
+			ofs << prev;
+		}
+		ifs.close();
+		ofs.close();
+	}
+	else {
+		throw std::exception();
+	}
 }

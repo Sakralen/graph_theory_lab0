@@ -11,17 +11,23 @@
 #include <bitset> //Для удобного представления в двоичном виде
 #include <filesystem>
 #include <algorithm>
+//#include <regex>
 
 //define
 #define SYMB_CNT 25				//Длина заданного алфавита
 #define SOURCE_FILE_SIZE 10000		//Требуемая длина файла
-#define LZW_DEPTH 13				//Разрядность для кодов
+#define LZW_DEPTH 13				//Разрядность для кодов LZW
 									//Для заданных параметров получается ~5000 кодов -> 13 бит 
+#define RLE_DEPTH 8				//Разрядность для количества повторений в RLE
+									//Худший случай -- повторение одного символа 10000 раз -> 14 бит					 
 //#define LZW_DEPTH_BYTES 2
+
 
 #define SOURCE_FILE_NAME "source.txt"				//Название формируемого файла-"исходника"
 #define ENCODED_LZW_FILE_NAME "lzw_encoded.txt"		//Название закодированного LZW файла
 #define DECODED_LZW_FILE_NAME "lzw_decoded.txt"		//Название декодированного LZW файла
+#define ENCODED_RLE_FILE_NAME "rle_encoded.txt"		//Название закодированного LZW файла
+#define DECODED_RLEFILE_NAME "rle_decoded.txt"		//Название декодированного LZW файла
 
 #define stop __asm nop
 
@@ -38,12 +44,14 @@ using std::cout;
 typedef short curtype;
 
 //constants
-static const char* kSymbStr = "аыибксАЫИБКС0123456789 ).";
+const string kSymbStr = "аыибксАЫИБКС0123456789 ).";
+//const string kSymbStr = "10";
 
 //global variables
 extern map<char, float> mapSymbPrice;		//Словарь символов и цен кодирования
 extern map<string, curtype> mapLzwComp;		//Словарь символов/последовательностей и их кодов для сжатия
 extern map<curtype, string> mapLzwDecomp;		//Словарь кодов и их символов/последовательностей для распаковки
+extern map<curtype, string> mapRle;
 
 //functions
 void FillFile();			//Заполняет файл случайным образом
@@ -53,11 +61,14 @@ void InitMapLzwComp();			//Инициализирует словарь для сжатия для LZW
 void InitMapLzwDecomp();
 //string Int2Bin(curtype num);	//Формирует строковое представление
 							//двоичного вида десятичного числа заданной разрядности LZW_DEPTH
-string Int2Bin_dynamic(curtype num); //модификация с динамической длиной слова
+//string Int2Bin_dynamic(curtype num); //модификация с динамической длиной слова
 int CountBits(int num);
 void CompressLzw();			//Производит сжатие по алгоритму LZW
 void DecompressLzw();		//Производит распаковку по алгоритму LZW
-int GetFileSize_cpp17(const char* name);		//Вычисляет длину файла !!! Только C++17 и выше (?) !!!
+int GetFileSize_cpp17(string name);		//Вычисляет длину файла !!! Только C++17 и выше (?) !!!
 //int GetFileSize_lazy(const char* name);
 float CalcCompressionRatio(const char* name);	//Вычисляет коэф. сжатия
+bool IsFilesEqual(const string f1, const string f2);
+void ComressRLE();
+
 #endif // !GLOBALS_H
