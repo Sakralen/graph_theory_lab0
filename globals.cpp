@@ -205,55 +205,88 @@ bool IsFilesEqual(const string f1Name, const string f2Name) {
 	}
 }
 
-void ComressRLE() {
+void ComressRle() {
 	ifstream ifs(SOURCE_FILE_NAME);
 	ofstream ofs(ENCODED_RLE_FILE_NAME);
 	if (ifs.is_open() && ofs.is_open()) {
 		char buf;
-		char prev;
-		short sameCnt = 1;
-		short diffCnt = 1;
+		char prev = -1;
+		char repCnt = 0;
+		char diffCnt = 0;
 		//int max = -1;
+		//char cnt = 0;
+		//Sequence seqType = Sequence::kDifferent;
+		int pos = 0;
 
-		ifs >> std::noskipws >> prev;
+		//ifs >> std::noskipws >> prev;
 		while (ifs >> std::noskipws >> buf) {
-			//Рассмотреть граничный случай с EOF
 			if (buf == prev) {
-				if (sameCnt != 1 << (RLE_DEPTH - 1)) {
-					sameCnt++;
-					/*if (count > max) {
-						max = count;
-					}*/
+				repCnt++;
+				if (repCnt == 127) {	
+					//peek
+					EncodeRepSeq(buf, repCnt, ofs);
+					repCnt = 0;
 				}
-				else {
-					if (sameCnt) {
-						ofs << sameCnt << prev;
-					}
-					else {
-						ofs << prev;
-					}
-					sameCnt = 1;
+				if (diffCnt > 1) {
+					EncodeDiffSeq(pos, diffCnt - 1, ifs, ofs);
+					diffCnt = 0;
 				}
 			}
-			else {
-				if (sameCnt) {
-					ofs << sameCnt << prev;
+			else { //buf != prev
+				diffCnt++;
+				if (diffCnt == 127) {
+					//peek
+					EncodeDiffSeq(pos, diffCnt, ifs, ofs);
+					diffCnt = 0;
 				}
-				else {
-					ofs << prev;
+				if (repCnt > 1) {
+					EncodeRepSeq(prev, repCnt - 1, ofs);
+					repCnt = 0;
+					pos = ifs.tellg();
+					pos -= 1;
 				}
-				sameCnt = 1;
 			}
 			prev = buf;
 		}
-		if (sameCnt) {
-			ofs << ++sameCnt << prev;
+		if (repCnt > 1) {
+			EncodeRepSeq(prev, repCnt - 1, ofs);
+			//repCnt = 0;
+			//pos = ifs.tellg();
+			//pos -= 1;
 		}
-		else {
-			ofs << prev;
+		if (diffCnt > 1) {
+			EncodeDiffSeq(pos, diffCnt - 1, ifs, ofs);
+			//diffCnt = 0;
 		}
 		ifs.close();
 		ofs.close();
+	}
+	else {
+		throw std::exception();
+	}
+}
+
+void EncodeRepSeq(char letter, int count, ofstream& ofs) {
+	if (count > 0) {
+		ofs << count << letter;
+		//ofs << bitset<8>(count).to_string() << bitset<8>(letter).to_string();
+	}
+	else {
+		throw std::exception();
+	}
+}
+
+void EncodeDiffSeq(int startPos, int count, ifstream& ifs, ofstream& ofs) {
+	if (count > 0) {
+		ifs.seekg(startPos);
+		ofs << -1 * count;
+		//ofs << bitset<8>(-1 * count).to_string();
+		char buf;
+		for (int i = 0; i < count; i++) {
+			ifs >> std::noskipws >> buf;
+			ofs << buf;
+			//ofs << bitset<8>(buf).to_string();
+		}
 	}
 	else {
 		throw std::exception();

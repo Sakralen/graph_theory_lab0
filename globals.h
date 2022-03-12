@@ -45,7 +45,14 @@ typedef short curtype;
 
 //constants
 const string kSymbStr = "аыибксАЫИБКС0123456789 ).";
-//const string kSymbStr = "10";
+//const string kSymbStr = "abc";
+
+//enums
+enum class Sequence{
+	kRepeating,
+	kDifferent
+};
+
 
 //global variables
 extern map<char, float> mapSymbPrice;		//Словарь символов и цен кодирования
@@ -69,6 +76,9 @@ int GetFileSize_cpp17(string name);		//Вычисляет длину файла !!! Только C++17 и 
 //int GetFileSize_lazy(const char* name);
 float CalcCompressionRatio(const char* name);	//Вычисляет коэф. сжатия
 bool IsFilesEqual(const string f1, const string f2);
-void ComressRLE();
+void ComressRle();
+
+void EncodeRepSeq(char letter, int count, ofstream& ofs);
+void EncodeDiffSeq(int startPos, int count, ifstream& ifs, ofstream& ofs);
 
 #endif // !GLOBALS_H
