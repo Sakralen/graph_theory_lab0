@@ -27,7 +27,7 @@
 #define ENCODED_LZW_FILE_NAME "lzw_encoded.txt"		//Название закодированного LZW файла
 #define DECODED_LZW_FILE_NAME "lzw_decoded.txt"		//Название декодированного LZW файла
 #define ENCODED_RLE_FILE_NAME "rle_encoded.txt"		//Название закодированного LZW файла
-#define DECODED_RLEFILE_NAME "rle_decoded.txt"		//Название декодированного LZW файла
+#define DECODED_RLE_FILE_NAME "rle_decoded.txt"		//Название декодированного LZW файла
 
 #define stop __asm nop
 
@@ -70,6 +70,7 @@ void InitMapLzwDecomp();
 							//двоичного вида десятичного числа заданной разрядности LZW_DEPTH
 //string Int2Bin_dynamic(curtype num); //модификация с динамической длиной слова
 int CountBits(int num);
+string GetCodeStr(int depth, ifstream& ifs);
 void CompressLzw();			//Производит сжатие по алгоритму LZW
 void DecompressLzw();		//Производит распаковку по алгоритму LZW
 int GetFileSize_cpp17(string name);		//Вычисляет длину файла !!! Только C++17 и выше (?) !!!
@@ -77,8 +78,11 @@ int GetFileSize_cpp17(string name);		//Вычисляет длину файла !!! Только C++17 и 
 float CalcCompressionRatio(const char* name);	//Вычисляет коэф. сжатия
 bool IsFilesEqual(const string f1, const string f2);
 void ComressRle();
+void DecompressRle();
 
 void EncodeRepSeq(char letter, int count, ofstream& ofs);
 void EncodeDiffSeq(int startPos, int count, ifstream& ifs, ofstream& ofs);
+
+//void EncodeDiffSeq(int count, ifstream& ifs, ofstream& ofs);
 
 #endif // !GLOBALS_H

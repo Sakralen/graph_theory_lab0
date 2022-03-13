@@ -65,6 +65,16 @@ int CountBits(int num) {
 	return static_cast<int>(log(num) / log(2) + 1);
 }
 
+string GetCodeStr(int depth, ifstream& ifs) {
+	char buf;
+	string sequence;
+	for (int i = 0; i < depth; i++) {
+		ifs >> std::noskipws >> buf;
+		sequence += buf;
+	}
+	return sequence;
+}
+
 void CompressLzw() {
 	mapLzwComp.clear();
 	InitMapLzwComp();
@@ -209,54 +219,60 @@ void ComressRle() {
 	ifstream ifs(SOURCE_FILE_NAME);
 	ofstream ofs(ENCODED_RLE_FILE_NAME);
 	if (ifs.is_open() && ofs.is_open()) {
-		char buf;
-		char prev = -1;
-		char repCnt = 0;
-		char diffCnt = 0;
-		//int max = -1;
-		//char cnt = 0;
-		//Sequence seqType = Sequence::kDifferent;
+		char prev, cur, next;	//храню предыдущий, нынешний и следующий символы
+		bool isRecentlyEncoded = false;	//флаг для случая aaabbb
+		int counter = 2;
 		int pos = 0;
 
-		//ifs >> std::noskipws >> prev;
-		while (ifs >> std::noskipws >> buf) {
-			if (buf == prev) {
-				repCnt++;
-				if (repCnt == 127) {	
-					//peek
-					EncodeRepSeq(buf, repCnt, ofs);
-					repCnt = 0;
+		ifs >> std::noskipws >> prev;
+		while (ifs >> std::noskipws >> cur) {
+			if (counter == 127) {
+				if (prev == cur) {
+					EncodeRepSeq(cur, counter, ofs);
 				}
-				if (diffCnt > 1) {
-					EncodeDiffSeq(pos, diffCnt - 1, ifs, ofs);
-					diffCnt = 0;
+				else { //prev != cur
+					counter--;
+					EncodeDiffSeq(pos, counter, ifs, ofs);
 				}
+				isRecentlyEncoded = false;
+				counter = 2;
+				pos = std::ios::cur - 1; 
+				prev = cur;
+				ifs >> std::noskipws >> cur;
 			}
-			else { //buf != prev
-				diffCnt++;
-				if (diffCnt == 127) {
-					//peek
-					EncodeDiffSeq(pos, diffCnt, ifs, ofs);
-					diffCnt = 0;
-				}
-				if (repCnt > 1) {
-					EncodeRepSeq(prev, repCnt - 1, ofs);
-					repCnt = 0;
+			next = ifs.peek();
+			if (next != EOF) {
+				if ((prev == cur) && (cur != next)) { //Закончилась повторяющаяся последовательность
+					EncodeRepSeq(cur, counter, ofs);
 					pos = ifs.tellg();
-					pos -= 1;
+					counter = 1;
+					isRecentlyEncoded = true;
+				}
+				else if ((prev != cur) && (cur == next)) { //Закончилась КАКАЯ-ТО последовательность
+					if (!isRecentlyEncoded) {	//Закочниалсь неповт. послед.-ть
+						counter--;
+						EncodeDiffSeq(pos, counter, ifs, ofs);
+						counter = 1;
+					}
+					else {						//Закочниалсь повт. послед.-ть
+						counter = 2;
+					}
+				}
+				else {
+					isRecentlyEncoded = false;
+					counter++;
+				}
+				prev = cur;
+			}
+			else { //next == EOF
+				if (prev == cur) {	//Была повт. послед.-ть
+					EncodeRepSeq(cur, counter, ofs);
+				}
+				else { //prev != cur	//Была неповт. послед.-ть
+					//counter--;
+					EncodeDiffSeq(pos, counter, ifs, ofs);
 				}
 			}
-			prev = buf;
-		}
-		if (repCnt > 1) {
-			EncodeRepSeq(prev, repCnt - 1, ofs);
-			//repCnt = 0;
-			//pos = ifs.tellg();
-			//pos -= 1;
-		}
-		if (diffCnt > 1) {
-			EncodeDiffSeq(pos, diffCnt - 1, ifs, ofs);
-			//diffCnt = 0;
 		}
 		ifs.close();
 		ofs.close();
@@ -266,10 +282,55 @@ void ComressRle() {
 	}
 }
 
+void DecompressRle() {
+	ifstream ifs(ENCODED_RLE_FILE_NAME);
+	ofstream ofs(DECODED_RLE_FILE_NAME);
+	if (ifs.is_open() && ofs.is_open()) {
+		char buf;
+		char cnt;
+		char letter;
+		string sequence;
+
+		while (ifs >> std::noskipws >> buf) {
+			sequence += buf;
+			if (sequence.size() == 8) {
+				cnt = bitset<8>(sequence).to_ulong();
+				sequence.clear();
+				if (cnt > 0) {
+					for (int i = 0; i < 8; i++) {
+						ifs >> std::noskipws >> buf;
+						sequence += buf;
+					}
+					letter = bitset<8>(sequence).to_ulong();
+					sequence.clear();
+					for (int i = 0; i < cnt; i++) {
+						ofs << letter;
+					}
+				}
+				else {
+					cnt *= -1;
+					for (int i = 0; i < cnt; i++) {
+						for (int i = 0; i < 8; i++) {
+							ifs >> std::noskipws >> buf;
+							sequence += buf;
+						}
+						letter = bitset<8>(sequence).to_ulong();
+						sequence.clear();
+						ofs << letter;
+					}
+				}
+			}
+		}
+	}
+	else {
+		throw std::exception();
+	}
+}
+
 void EncodeRepSeq(char letter, int count, ofstream& ofs) {
 	if (count > 0) {
-		ofs << count << letter;
-		//ofs << bitset<8>(count).to_string() << bitset<8>(letter).to_string();
+		//ofs << count << letter;
+		ofs << bitset<8>(count).to_string() << bitset<8>(letter).to_string();
 	}
 	else {
 		throw std::exception();
@@ -279,16 +340,39 @@ void EncodeRepSeq(char letter, int count, ofstream& ofs) {
 void EncodeDiffSeq(int startPos, int count, ifstream& ifs, ofstream& ofs) {
 	if (count > 0) {
 		ifs.seekg(startPos);
-		ofs << -1 * count;
-		//ofs << bitset<8>(-1 * count).to_string();
+		//ofs << -1 * count;
+		ofs << bitset<8>(-1 * count).to_string();
 		char buf;
 		for (int i = 0; i < count; i++) {
 			ifs >> std::noskipws >> buf;
-			ofs << buf;
-			//ofs << bitset<8>(buf).to_string();
+			//ofs << buf;
+			ofs << bitset<8>(buf).to_string();
 		}
 	}
 	else {
 		throw std::exception();
 	}
 }
+
+//void EncodeDiffSeq(int count, ifstream& ifs, ofstream& ofs) {
+//	if (count > 0) {
+//		char buf;
+//		int pos = ifs.tellg();
+//		ifs.seekg(pos - count - 1); 
+//
+//
+//		ofs << -1 * count;
+//		//ofs << bitset<8>(-1 * count).to_string();
+//
+//		for (int i = 0; i < count; i++) {
+//			ifs >> std::noskipws >> buf;
+//			ofs << buf;
+//			//ofs << bitset<8>(buf).to_string();
+//		}
+//
+//		ifs >> std::noskipws >> buf;
+//	}
+//	else {
+//		throw std::exception();
+//	}
+//}

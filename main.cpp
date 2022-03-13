@@ -16,7 +16,8 @@ void main() {
 	//cout << bitset<8>('A').to_string();
 
 
-	//FillFile();
+	FillFile();
 	ComressRle();
+	DecompressRle();
 	stop
 }
