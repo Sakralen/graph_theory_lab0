@@ -141,12 +141,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="globals.h" />
-    <ClInclude Include="MyBitset.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="globals.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="MyBitset.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

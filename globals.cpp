@@ -4,7 +4,7 @@
 #include <fstream>
 //#include <ctime>
 #include <random>
-#include "MyBitset.h"
+//#include "MyBitset.h"
 
 void FillFile() {
 	//srand(time(0));
@@ -53,33 +53,15 @@ void InitMapLzwComp() {
 	}
 }
 
-//string Int2Bin(curtype num) {
-//	return bitset<LZW_DEPTH>(num).to_string();
-//}
-
-//const char* Int2C_String(int num) {
-//	return std::to_string(num).c_str();
-//}
-
 int CountBits(int num) {
 	return static_cast<int>(log(num) / log(2) + 1);
 }
 
-string GetCodeStr(int depth, ifstream& ifs) {
-	char buf;
-	string sequence;
-	for (int i = 0; i < depth; i++) {
-		ifs >> std::noskipws >> buf;
-		sequence += buf;
-	}
-	return sequence;
-}
-
-void CompressLzw() {
+void CompressLzw(const char* name) {
 	mapLzwComp.clear();
 	InitMapLzwComp();
 
-	ifstream ifs(SOURCE_FILE_NAME);
+	ifstream ifs(name);
 	ofstream ofs(ENCODED_LZW_FILE_NAME/*, ios::binary*/);
 	if (ifs.is_open() && ofs.is_open()) {
 		char buf;
@@ -113,11 +95,11 @@ void InitMapLzwDecomp() {
 	stop
 }
 
-void DecompressLzw() {
+void DecompressLzw(const char* name) {
 	mapLzwDecomp.clear();
 	InitMapLzwDecomp();
 
-	ifstream ifs(ENCODED_LZW_FILE_NAME/*, ios::binary*/);
+	ifstream ifs(name/*, ios::binary*/);
 	ofstream ofs(DECODED_LZW_FILE_NAME);
 	if (ifs.is_open() && ofs.is_open()) {
 		char buf;
@@ -215,8 +197,8 @@ bool IsFilesEqual(const string f1Name, const string f2Name) {
 	}
 }
 
-void ComressRle() {
-	ifstream ifs(SOURCE_FILE_NAME);
+void ComressRle(const char* name) {
+	ifstream ifs(name);
 	ofstream ofs(ENCODED_RLE_FILE_NAME);
 	if (ifs.is_open() && ofs.is_open()) {
 		char prev, cur, next;	//храню предыдущий, нынешний и следующий символы
@@ -229,14 +211,16 @@ void ComressRle() {
 			if (counter == 127) {
 				if (prev == cur) {
 					EncodeRepSeq(cur, counter, ofs);
+					//counter = 1;
 				}
 				else { //prev != cur
-					counter--;
+					counter--;	//Алгоритмическая проблема: макс. длина неповт. послед.-ти == 126, решается костылем
 					EncodeDiffSeq(pos, counter, ifs, ofs);
+					//counter = 1;
 				}
 				isRecentlyEncoded = false;
-				counter = 2;
-				pos = std::ios::cur - 1; 
+				counter = 1;
+				pos = ios::cur; 
 				prev = cur;
 				ifs >> std::noskipws >> cur;
 			}
@@ -282,8 +266,8 @@ void ComressRle() {
 	}
 }
 
-void DecompressRle() {
-	ifstream ifs(ENCODED_RLE_FILE_NAME);
+void DecompressRle(const char* name) {
+	ifstream ifs(name);
 	ofstream ofs(DECODED_RLE_FILE_NAME);
 	if (ifs.is_open() && ofs.is_open()) {
 		char buf;
@@ -293,15 +277,15 @@ void DecompressRle() {
 
 		while (ifs >> std::noskipws >> buf) {
 			sequence += buf;
-			if (sequence.size() == 8) {
-				cnt = bitset<8>(sequence).to_ulong();
+			if (sequence.size() == RLE_DEPTH) {
+				cnt = bitset<RLE_DEPTH>(sequence).to_ulong();
 				sequence.clear();
 				if (cnt > 0) {
-					for (int i = 0; i < 8; i++) {
+					for (int i = 0; i < RLE_DEPTH; i++) {
 						ifs >> std::noskipws >> buf;
 						sequence += buf;
 					}
-					letter = bitset<8>(sequence).to_ulong();
+					letter = bitset<RLE_DEPTH>(sequence).to_ulong();
 					sequence.clear();
 					for (int i = 0; i < cnt; i++) {
 						ofs << letter;
@@ -310,11 +294,11 @@ void DecompressRle() {
 				else {
 					cnt *= -1;
 					for (int i = 0; i < cnt; i++) {
-						for (int i = 0; i < 8; i++) {
+						for (int i = 0; i < RLE_DEPTH; i++) {
 							ifs >> std::noskipws >> buf;
 							sequence += buf;
 						}
-						letter = bitset<8>(sequence).to_ulong();
+						letter = bitset<RLE_DEPTH>(sequence).to_ulong();
 						sequence.clear();
 						ofs << letter;
 					}
@@ -322,6 +306,22 @@ void DecompressRle() {
 			}
 		}
 	}
+	//	while (ifs >> std::noskipws >> buf) {
+	//		if (buf > 0) {
+	//			ifs >> std::noskipws >> letter;
+	//			for (int i = 0; i < buf; i++) {
+	//				ofs << letter;
+	//			}
+	//		}
+	//		else {
+	//			buf *= -1;
+	//			for (int i = 0; i < buf; i++) {
+	//				ifs >> std::noskipws >> letter;
+	//				ofs << letter;
+	//			}
+	//		}
+	//	}
+	//}
 	else {
 		throw std::exception();
 	}
@@ -330,7 +330,7 @@ void DecompressRle() {
 void EncodeRepSeq(char letter, int count, ofstream& ofs) {
 	if (count > 0) {
 		//ofs << count << letter;
-		ofs << bitset<8>(count).to_string() << bitset<8>(letter).to_string();
+		ofs << bitset<RLE_DEPTH>(count).to_string() << bitset<RLE_DEPTH>(letter).to_string();
 	}
 	else {
 		throw std::exception();
@@ -341,12 +341,12 @@ void EncodeDiffSeq(int startPos, int count, ifstream& ifs, ofstream& ofs) {
 	if (count > 0) {
 		ifs.seekg(startPos);
 		//ofs << -1 * count;
-		ofs << bitset<8>(-1 * count).to_string();
+		ofs << bitset<RLE_DEPTH>(-1 * count).to_string();
 		char buf;
 		for (int i = 0; i < count; i++) {
 			ifs >> std::noskipws >> buf;
 			//ofs << buf;
-			ofs << bitset<8>(buf).to_string();
+			ofs << bitset<RLE_DEPTH>(buf).to_string();
 		}
 	}
 	else {
@@ -354,25 +354,20 @@ void EncodeDiffSeq(int startPos, int count, ifstream& ifs, ofstream& ofs) {
 	}
 }
 
-//void EncodeDiffSeq(int count, ifstream& ifs, ofstream& ofs) {
-//	if (count > 0) {
-//		char buf;
-//		int pos = ifs.tellg();
-//		ifs.seekg(pos - count - 1); 
-//
-//
-//		ofs << -1 * count;
-//		//ofs << bitset<8>(-1 * count).to_string();
-//
-//		for (int i = 0; i < count; i++) {
-//			ifs >> std::noskipws >> buf;
-//			ofs << buf;
-//			//ofs << bitset<8>(buf).to_string();
-//		}
-//
-//		ifs >> std::noskipws >> buf;
-//	}
-//	else {
-//		throw std::exception();
-//	}
-//}
+void DbgCheckEqual(const string f1, const string f2) {
+	ifstream ifs1(f1), ifs2(f2);
+	char buf1, buf2;
+	for (int i = 0; i < SOURCE_FILE_SIZE; i++) {
+		ifs1 >> std::noskipws >> buf1;
+		ifs2 >> std::noskipws >> buf2;
+		cout << i << "  " << buf1 << "  " << buf2 << "  ";
+		if (buf1 == buf2) {
+			cout << "good\n";
+		}
+		else {
+			cout << "BAD!!!!!!!!!\n";
+		}
+	}
+	ifs1.close();
+	ifs2.close();
+}
